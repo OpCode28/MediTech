@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
+import { db, isDbAvailable, MOCK_AMBULANCES } from "@workspace/db";
 import { ambulancesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { ListAmbulancesQueryParams } from "@workspace/api-zod";
@@ -13,6 +13,17 @@ router.get("/ambulances", async (req, res) => {
   }
 
   const { hospitalId, status } = parseResult.data;
+
+  if (!isDbAvailable) {
+    let result = [...MOCK_AMBULANCES];
+    if (hospitalId) {
+      result = result.filter(a => a.hospitalId === hospitalId);
+    }
+    if (status) {
+      result = result.filter(a => a.status === status);
+    }
+    return res.json(result);
+  }
 
   let ambulances;
   if (hospitalId && status) {

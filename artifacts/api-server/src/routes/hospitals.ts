@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
+import { db, isDbAvailable, MOCK_HOSPITALS, MOCK_RESOURCES } from "@workspace/db";
 import { hospitalsTable, hospitalResourcesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import {
@@ -19,8 +19,19 @@ router.get("/hospitals", async (req, res) => {
   }
 
   const { city, state } = parseResult.data;
-  let hospitals;
 
+  if (!isDbAvailable) {
+    let result = [...MOCK_HOSPITALS];
+    if (city) {
+      result = result.filter(h => h.city.toLowerCase() === city.toLowerCase());
+    }
+    if (state) {
+      result = result.filter(h => h.state.toLowerCase() === state.toLowerCase());
+    }
+    return res.json(result);
+  }
+
+  let hospitals;
   if (city && state) {
     hospitals = await db.select().from(hospitalsTable).where(
       and(eq(hospitalsTable.city, city), eq(hospitalsTable.state, state))
@@ -42,6 +53,14 @@ router.get("/hospitals/:id", async (req, res) => {
     return res.status(400).json({ error: "Invalid ID" });
   }
 
+  if (!isDbAvailable) {
+    const hospital = MOCK_HOSPITALS.find(h => h.id === parseResult.data.id);
+    if (!hospital) {
+      return res.status(404).json({ error: "Hospital not found" });
+    }
+    return res.json(hospital);
+  }
+
   const hospital = await db
     .select()
     .from(hospitalsTable)
@@ -59,6 +78,14 @@ router.get("/hospitals/:id/resources", async (req, res) => {
   const parseResult = GetHospitalResourcesParams.safeParse({ id: Number(req.params.id) });
   if (!parseResult.success) {
     return res.status(400).json({ error: "Invalid ID" });
+  }
+
+  if (!isDbAvailable) {
+    const resource = MOCK_RESOURCES.find(r => r.hospitalId === parseResult.data.id);
+    if (!resource) {
+      return res.status(404).json({ error: "Resources not found" });
+    }
+    return res.json(resource);
   }
 
   const resources = await db
@@ -80,6 +107,15 @@ router.put("/hospitals/:id/resources", async (req, res) => {
 
   if (!paramsResult.success || !bodyResult.success) {
     return res.status(400).json({ error: "Invalid request" });
+  }
+
+  if (!isDbAvailable) {
+    const resource = MOCK_RESOURCES.find(r => r.hospitalId === paramsResult.data.id);
+    if (!resource) {
+      return res.status(404).json({ error: "Resources not found" });
+    }
+    Object.assign(resource, bodyResult.data, { updatedAt: new Date() });
+    return res.json(resource);
   }
 
   const updated = await db

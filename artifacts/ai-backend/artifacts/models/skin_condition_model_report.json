@@ -1,0 +1,111 @@
+{
+  "chosen_model": "random_forest",
+  "classes": [
+    "acne",
+    "actinic_keratosis",
+    "atopic_dermatitis",
+    "basal_cell_carcinoma",
+    "benign_keratosis_like_lesions",
+    "eczema",
+    "fungal_infection",
+    "melanocytic_nevi",
+    "melanoma",
+    "psoriasis_lichen_planus",
+    "rosacea",
+    "seborrheic_keratoses",
+    "viral_warts_molluscum"
+  ],
+  "report": {
+    "acne": {
+      "precision": 0.625,
+      "recall": 0.13513513513513514,
+      "f1-score": 0.2222222222222222,
+      "support": 37.0
+    },
+    "actinic_keratosis": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 37.0
+    },
+    "atopic_dermatitis": {
+      "precision": 0.4942528735632184,
+      "recall": 0.17131474103585656,
+      "f1-score": 0.25443786982248523,
+      "support": 251.0
+    },
+    "basal_cell_carcinoma": {
+      "precision": 0.7520661157024794,
+      "recall": 0.7777777777777778,
+      "f1-score": 0.7647058823529411,
+      "support": 702.0
+    },
+    "benign_keratosis_like_lesions": {
+      "precision": 0.7,
+      "recall": 0.3701923076923077,
+      "f1-score": 0.48427672955974843,
+      "support": 416.0
+    },
+    "eczema": {
+      "precision": 0.4883177570093458,
+      "recall": 0.5618279569892473,
+      "f1-score": 0.5225,
+      "support": 372.0
+    },
+    "fungal_infection": {
+      "precision": 0.49140893470790376,
+      "recall": 0.42058823529411765,
+      "f1-score": 0.4532488114104596,
+      "support": 340.0
+    },
+    "melanocytic_nevi": {
+      "precision": 0.8,
+      "recall": 0.9560853199498118,
+      "f1-score": 0.8711060302943698,
+      "support": 1594.0
+    },
+    "melanoma": {
+      "precision": 0.9364791288566243,
+      "recall": 0.821656050955414,
+      "f1-score": 0.8753180661577609,
+      "support": 628.0
+    },
+    "psoriasis_lichen_planus": {
+      "precision": 0.40240963855421685,
+      "recall": 0.40632603406326034,
+      "f1-score": 0.4043583535108959,
+      "support": 411.0
+    },
+    "rosacea": {
+      "precision": 0.8421052631578947,
+      "recall": 0.43243243243243246,
+      "f1-score": 0.5714285714285714,
+      "support": 37.0
+    },
+    "seborrheic_keratoses": {
+      "precision": 0.42,
+      "recall": 0.6243243243243243,
+      "f1-score": 0.5021739130434782,
+      "support": 370.0
+    },
+    "viral_warts_molluscum": {
+      "precision": 0.4951923076923077,
+      "recall": 0.48931116389548696,
+      "f1-score": 0.4922341696535245,
+      "support": 421.0
+    },
+    "accuracy": 0.6695156695156695,
+    "macro avg": {
+      "precision": 0.572864001480307,
+      "recall": 0.4743824215034748,
+      "f1-score": 0.49369312457357356,
+      "support": 5616.0
+    },
+    "weighted avg": {
+      "precision": 0.6657406051529058,
+      "recall": 0.6695156695156695,
+      "f1-score": 0.6548175220545225,
+      "support": 5616.0
+    }
+  }
+}

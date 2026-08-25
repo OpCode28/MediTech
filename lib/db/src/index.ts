@@ -4,13 +4,16 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+export const isDbAvailable = Boolean(process.env.DATABASE_URL);
+
+if (!isDbAvailable) {
+  console.warn(
+    "[MediTech DB] DATABASE_URL is not set. Operating with fallback in-memory mock repository."
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+export const pool = isDbAvailable ? new Pool({ connectionString: process.env.DATABASE_URL }) : null;
+export const db = isDbAvailable ? drizzle(pool!, { schema }) : (null as any);
 
 export * from "./schema";
+export * from "./mock";

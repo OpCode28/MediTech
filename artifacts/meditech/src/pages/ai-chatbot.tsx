@@ -8,9 +8,16 @@ import {
   Mic, MicOff, Volume2, VolumeX, Globe, ArrowLeft,
   Send, Bot, User, AlertTriangle, Accessibility, RefreshCw,
 } from "lucide-react";
-import { speakText as speakWithVoice, getRecognitionLang } from "@/lib/voice";
+import { useI18n } from "@/lib/i18n";
+import {
+  speakText,
+  stopSpeaking,
+  getVoiceDetails,
+  getRecognitionLang,
+  type Lang,
+} from "@/lib/voice";
 
-type Language = "en" | "hi" | "od";
+type Language = Lang;
 type UrgencyLevel = "low" | "medium" | "high";
 
 interface Message {
@@ -83,132 +90,123 @@ const URGENCY_STYLES: Record<UrgencyLevel, string> = {
   high: "border-red-200 bg-red-50",
 };
 
-function speakText(text: string, lang: Language, rate: number = 0.9) {
-  speakWithVoice(text, lang, rate);
-}
-
 export default function AIChatbot() {
+  const { lang, setLang } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [language, setLanguage] = useState<Language>("en");
   const [isListening, setIsListening] = useState(false);
   const [voiceOutput, setVoiceOutput] = useState(true);
   const [elderlyMode, setElderlyMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
-  const [voiceStatus, setVoiceStatus] = useState<"loading" | "found" | "fallback">("loading");
-  const [voiceName, setVoiceName] = useState("");
+  const [voiceDetails, setVoiceDetails] = useState<{ status: string; voiceName: string }>({
+    status: "loading",
+    voiceName: "",
+  });
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-  const ui = UI_STRINGS[language];
+  const ui = UI_STRINGS[lang];
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) setSpeechSupported(false);
   }, []);
 
+  // Update voice details whenever central language changes
   useEffect(() => {
-    if (!("speechSynthesis" in window)) return;
-    const FALLBACKS: Record<Language, string[]> = {
-      en: ["en-IN", "en-GB", "en-US", "en"],
-      hi: ["hi-IN", "hi-US", "hi"],
-      od: ["or-IN", "or"],
-    };
-    const check = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) return false;
-      const targets = FALLBACKS[language];
-      let found: SpeechSynthesisVoice | undefined;
-      for (const t of targets) {
-        found = voices.find((v) => v.lang === t);
-        if (found) break;
-      }
-      if (!found) {
-        const prefix = targets[0].split("-")[0].toLowerCase();
-        found = voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
-      }
-      if (found) {
-        setVoiceStatus("found");
-        setVoiceName(found.name);
-      } else {
-        setVoiceStatus("fallback");
-        setVoiceName("English (fallback)");
-      }
-      return true;
-    };
-    if (!check()) {
-      window.speechSynthesis.addEventListener("voiceschanged", check);
-      return () => window.speechSynthesis.removeEventListener("voiceschanged", check);
-    }
-  }, [language]);
+    getVoiceDetails(lang).then(setVoiceDetails);
+  }, [lang]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  const sendMessage = useCallback(
+    async (text: string, targetLang?: Language) => {
+      if (!text.trim()) return;
+      const currentLang = targetLang || lang;
+
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "user",
+        text: text.trim(),
+        timestamp: new Date(),
+      };
+
+      if (text !== "hello") {
+        setMessages((prev) => [...prev, userMsg]);
+      }
+      setInput("");
+      setLoading(true);
+
+      try {
+        const res = await fetch("/ai-api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, language: currentLang }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Chat error");
+
+        const botMsg: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: data.response,
+          language: data.detected_language || currentLang,
+          urgency: data.urgency,
+          followUps: data.follow_up_suggestions,
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => {
+          const filtered = text === "hello" ? [] : prev;
+          return [...filtered, botMsg];
+        });
+
+        if (voiceOutput) {
+          const rate = elderlyMode ? 0.75 : 0.9;
+          speakText(data.response, (data.detected_language as Language) || currentLang, rate);
+        }
+      } catch (e: any) {
+        const errMsg: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text:
+            currentLang === "hi"
+              ? "क्षमा करें, कनेक्शन में समस्या है। कृपया पुनः प्रयास करें।"
+              : currentLang === "od"
+              ? "ଦୁଃଖିତ, ସଂଯୋଗରେ ସମସ୍ୟା ଅଛି। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।"
+              : "Sorry, I couldn't connect. Please check your connection and try again.",
+          urgency: "low",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errMsg]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [lang, voiceOutput, elderlyMode]
+  );
+
+  // Initial welcome greeting
   useEffect(() => {
     if (messages.length === 0) {
-      sendMessage("hello");
+      sendMessage("hello", lang);
     }
   }, []);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      text: text.trim(),
-      timestamp: new Date(),
-    };
-    if (text !== "hello") {
-      setMessages((prev) => [...prev, userMsg]);
-    }
+  // SINGLE CLICK LANGUAGE SWITCHING FIX
+  const handleLanguageChange = (newLang: Language) => {
+    if (newLang === lang) return;
+    stopSpeaking();
+    setLang(newLang);
     setInput("");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/ai-api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, language }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Chat error");
-
-      const botMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: data.response,
-        language: data.detected_language,
-        urgency: data.urgency,
-        followUps: data.follow_up_suggestions,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => {
-        const filtered = text === "hello" ? [] : prev;
-        return [...filtered, botMsg];
-      });
-
-      if (voiceOutput) {
-        const rate = elderlyMode ? 0.75 : 0.9;
-        speakText(data.response, data.detected_language || language, rate);
-      }
-    } catch (e: any) {
-      const errMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: "Sorry, I couldn't connect. Please check your connection and try again.",
-        urgency: "low",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errMsg]);
-    } finally {
-      setLoading(false);
-    }
-  }, [language, voiceOutput, elderlyMode]);
+    sendMessage("hello", newLang);
+  };
 
   const handleSend = () => {
-    if (input.trim()) sendMessage(input);
+    if (input.trim()) sendMessage(input, lang);
   };
 
   const toggleListening = () => {
@@ -224,13 +222,13 @@ export default function AIChatbot() {
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = getRecognitionLang(language);
+    recognition.lang = getRecognitionLang(lang);
 
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
       setIsListening(false);
-      setTimeout(() => sendMessage(transcript), 300);
+      setTimeout(() => sendMessage(transcript, lang), 300);
     };
 
     recognition.onerror = () => setIsListening(false);
@@ -249,13 +247,12 @@ export default function AIChatbot() {
   };
 
   const resetChat = () => {
-    window.speechSynthesis?.cancel();
+    stopSpeaking();
     setMessages([]);
-    setTimeout(() => sendMessage("hello"), 100);
+    setTimeout(() => sendMessage("hello", lang), 100);
   };
 
   const textSizeClass = elderlyMode ? "text-xl" : "text-sm";
-  const buttonSizeClass = elderlyMode ? "h-14 text-lg px-6" : "";
 
   return (
     <div className={cn("flex flex-col h-[calc(100vh-120px)]", elderlyMode ? "text-xl" : "")}>
@@ -271,27 +268,27 @@ export default function AIChatbot() {
             <div className="flex items-center gap-2">
               <Bot className={cn("text-indigo-600", elderlyMode ? "h-8 w-8" : "h-5 w-5")} />
               <h1 className={cn("font-bold", elderlyMode ? "text-2xl" : "text-lg")}>{ui.title}</h1>
-              <Badge variant="secondary" className="text-xs">Beta</Badge>
+              <Badge variant="secondary" className="text-xs">Trilingual Voice AI</Badge>
             </div>
             {!elderlyMode && <p className="text-xs text-muted-foreground">{ui.subtitle}</p>}
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Language selector */}
-          <div className="flex items-center gap-1 border rounded-lg p-1 bg-white">
-            <Globe className={elderlyMode ? "h-5 w-5 text-muted-foreground ml-1" : "h-3.5 w-3.5 text-muted-foreground ml-1"} />
+          {/* Centralized Single-Click Language Selector */}
+          <div className="flex items-center gap-1 border rounded-lg p-1 bg-white shadow-sm">
+            <Globe className={elderlyMode ? "h-5 w-5 text-indigo-600 ml-1" : "h-3.5 w-3.5 text-indigo-600 ml-1"} />
             {(["en", "hi", "od"] as Language[]).map((l) => (
               <button
                 key={l}
-                onClick={() => setLanguage(l)}
+                onClick={() => handleLanguageChange(l)}
                 className={cn(
-                  "rounded px-2 py-1 font-medium transition-colors",
-                  elderlyMode ? "text-base px-3 py-2" : "text-xs",
-                  language === l ? "bg-indigo-600 text-white" : "text-muted-foreground hover:bg-gray-100"
+                  "rounded px-2.5 py-1 font-medium transition-colors cursor-pointer",
+                  elderlyMode ? "text-base px-3.5 py-2" : "text-xs",
+                  lang === l ? "bg-indigo-600 text-white shadow" : "text-muted-foreground hover:bg-gray-100"
                 )}
               >
-                {l.toUpperCase()}
+                {LANG_LABELS[l]}
               </button>
             ))}
           </div>
@@ -301,19 +298,32 @@ export default function AIChatbot() {
             <Button
               variant={voiceOutput ? "default" : "outline"}
               size={elderlyMode ? "default" : "sm"}
-              onClick={() => { setVoiceOutput(!voiceOutput); window.speechSynthesis?.cancel(); }}
+              onClick={() => {
+                setVoiceOutput(!voiceOutput);
+                stopSpeaking();
+              }}
               className={elderlyMode ? "h-12 px-4" : ""}
               title={ui.voice}
             >
-              {voiceOutput ? <Volume2 className={elderlyMode ? "h-6 w-6" : "h-3.5 w-3.5"} /> : <VolumeX className={elderlyMode ? "h-6 w-6" : "h-3.5 w-3.5"} />}
+              {voiceOutput ? (
+                <Volume2 className={elderlyMode ? "h-6 w-6" : "h-3.5 w-3.5"} />
+              ) : (
+                <VolumeX className={elderlyMode ? "h-6 w-6" : "h-3.5 w-3.5"} />
+              )}
               {elderlyMode && <span className="ml-2">{ui.voice}</span>}
             </Button>
-            {voiceOutput && voiceStatus !== "loading" && (
-              <span className={cn(
-                "text-[10px] leading-none px-1 rounded",
-                voiceStatus === "found" ? "text-green-600" : "text-amber-600"
-              )}>
-                {voiceStatus === "found" ? `🔊 ${voiceName}` : "🔊 English (no native voice)"}
+            {voiceOutput && voiceDetails.voiceName !== "" && (
+              <span
+                className={cn(
+                  "text-[10px] leading-none px-1 py-0.5 rounded font-medium",
+                  voiceDetails.status === "found"
+                    ? "text-green-700 bg-green-50"
+                    : voiceDetails.status === "cloud_stream"
+                    ? "text-blue-700 bg-blue-50"
+                    : "text-amber-700 bg-amber-50"
+                )}
+              >
+                🔊 {voiceDetails.voiceName}
               </span>
             )}
           </div>
@@ -330,7 +340,12 @@ export default function AIChatbot() {
           </Button>
 
           {/* Reset */}
-          <Button variant="outline" size={elderlyMode ? "default" : "sm"} onClick={resetChat} className={elderlyMode ? "h-12 px-4" : ""}>
+          <Button
+            variant="outline"
+            size={elderlyMode ? "default" : "sm"}
+            onClick={resetChat}
+            className={elderlyMode ? "h-12 px-4" : ""}
+          >
             <RefreshCw className={elderlyMode ? "h-5 w-5 mr-2" : "h-3.5 w-3.5"} />
             {elderlyMode ? ui.restart : ""}
           </Button>
@@ -345,14 +360,18 @@ export default function AIChatbot() {
               {msg.role === "assistant" && (
                 <div className="flex items-center gap-1.5 px-1">
                   <Bot className="h-3.5 w-3.5 text-indigo-600" />
-                  <span className="text-xs text-muted-foreground">Health Assistant</span>
-                  {msg.language && <Badge variant="outline" className="text-[10px] py-0 h-4">{LANG_LABELS[msg.language as Language]}</Badge>}
+                  <span className="text-xs font-semibold text-muted-foreground">MediTech Assistant</span>
+                  {msg.language && (
+                    <Badge variant="outline" className="text-[10px] py-0 h-4 border-indigo-200 text-indigo-700">
+                      {LANG_LABELS[msg.language as Language]}
+                    </Badge>
+                  )}
                   {msg.urgency === "high" && <Badge className="text-[10px] py-0 h-4 bg-red-600">Urgent</Badge>}
                 </div>
               )}
               <Card
                 className={cn(
-                  "px-4 py-3 rounded-2xl border",
+                  "px-4 py-3 rounded-2xl border shadow-sm",
                   msg.role === "user"
                     ? "bg-indigo-600 text-white border-indigo-600 rounded-br-sm"
                     : cn("rounded-bl-sm", msg.urgency ? URGENCY_STYLES[msg.urgency] : "bg-gray-50 border-gray-200")
@@ -367,9 +386,9 @@ export default function AIChatbot() {
                   {msg.followUps.map((s, i) => (
                     <button
                       key={i}
-                      onClick={() => sendMessage(s)}
+                      onClick={() => sendMessage(s, lang)}
                       className={cn(
-                        "rounded-full border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors",
+                        "rounded-full border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer",
                         elderlyMode ? "px-4 py-2 text-base" : "px-2.5 py-1 text-xs"
                       )}
                     >
@@ -380,10 +399,10 @@ export default function AIChatbot() {
               )}
               {msg.role === "assistant" && voiceOutput && (
                 <button
-                  onClick={() => speakText(msg.text, (msg.language as Language) || language, elderlyMode ? 0.75 : 0.9)}
-                  className="px-1 text-xs text-muted-foreground hover:text-indigo-600 flex items-center gap-1"
+                  onClick={() => speakText(msg.text, (msg.language as Language) || lang, elderlyMode ? 0.75 : 0.9)}
+                  className="px-1 text-xs text-muted-foreground hover:text-indigo-600 flex items-center gap-1 mt-0.5 cursor-pointer"
                 >
-                  <Volume2 className="h-3 w-3" /> Replay
+                  <Volume2 className="h-3 w-3" /> Replay Voice
                 </button>
               )}
             </div>
@@ -393,9 +412,9 @@ export default function AIChatbot() {
           <div className="flex justify-start">
             <Card className="px-4 py-3 bg-gray-50 border-gray-200 rounded-2xl rounded-bl-sm">
               <div className="flex gap-1.5 items-center">
-                <span className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
             </Card>
           </div>
@@ -405,15 +424,17 @@ export default function AIChatbot() {
 
       {/* Quick questions */}
       <div className="pt-2 pb-2">
-        <p className={cn("text-muted-foreground mb-1.5", elderlyMode ? "text-base" : "text-xs")}>{ui.quickTitle}</p>
+        <p className={cn("text-muted-foreground mb-1.5 font-medium", elderlyMode ? "text-base" : "text-xs")}>
+          {ui.quickTitle}
+        </p>
         <div className="flex flex-wrap gap-1.5">
-          {QUICK_MESSAGES[language].map((q) => (
+          {QUICK_MESSAGES[lang].map((q) => (
             <button
               key={q}
-              onClick={() => sendMessage(q)}
+              onClick={() => sendMessage(q, lang)}
               disabled={loading}
               className={cn(
-                "rounded-full border transition-colors",
+                "rounded-full border transition-colors cursor-pointer",
                 elderlyMode
                   ? "border-indigo-300 text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 text-base"
                   : "border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 text-xs"
@@ -428,7 +449,7 @@ export default function AIChatbot() {
       {/* Input area */}
       <div className="pt-2 border-t border-gray-200">
         {isListening && (
-          <div className="flex items-center gap-2 mb-2 text-red-600">
+          <div className="flex items-center gap-2 mb-2 text-red-600 font-medium">
             <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
             <span className={cn(elderlyMode ? "text-base" : "text-sm")}>{ui.listening}</span>
           </div>
@@ -452,19 +473,23 @@ export default function AIChatbot() {
                 size={elderlyMode ? "default" : "icon"}
                 onClick={toggleListening}
                 className={cn(
-                  "rounded-xl shrink-0",
+                  "rounded-xl shrink-0 cursor-pointer",
                   elderlyMode ? "h-14 w-14" : "h-10 w-10"
                 )}
                 title={isListening ? "Stop" : "Voice Input"}
               >
-                {isListening ? <MicOff className={elderlyMode ? "h-7 w-7" : "h-4 w-4"} /> : <Mic className={elderlyMode ? "h-7 w-7" : "h-4 w-4"} />}
+                {isListening ? (
+                  <MicOff className={elderlyMode ? "h-7 w-7" : "h-4 w-4"} />
+                ) : (
+                  <Mic className={elderlyMode ? "h-7 w-7" : "h-4 w-4"} />
+                )}
               </Button>
             )}
             <Button
               onClick={handleSend}
               disabled={!input.trim() || loading}
               className={cn(
-                "rounded-xl bg-indigo-600 hover:bg-indigo-700 shrink-0",
+                "rounded-xl bg-indigo-600 hover:bg-indigo-700 shrink-0 cursor-pointer",
                 elderlyMode ? "h-14 w-14" : "h-10 w-10",
                 "p-0"
               )}

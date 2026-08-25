@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "MediTech Smart Healthcare",
+    "slug": "meditech-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0e7490"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.meditech.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MediTech requires camera access to scan prescription documents and analyze skin/wound conditions.",
+        "NSLocationWhenInUseUsageDescription": "MediTech requires your location to locate the nearest hospital and dispatch emergency ambulances."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0e7490"
+      },
+      "package": "com.meditech.app",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CALL_PHONE",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

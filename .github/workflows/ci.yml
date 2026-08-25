@@ -1,0 +1,105 @@
+name: MediTech CI/CD Pipeline & Live Updates
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Typecheck & Build Web + API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install Monorepo Dependencies
+        run: pnpm install --ignore-scripts
+
+      - name: Typecheck Web App
+        run: pnpm --filter meditech run typecheck
+
+      - name: Build Express API Server
+        run: pnpm --filter api-server run build
+
+  test-python-ai:
+    name: Verify Python AI Service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r artifacts/ai-backend/requirements.txt
+
+      - name: Test Python AI Backend Syntax
+        run: python -m py_compile artifacts/ai-backend/app.py
+
+  build-android-apk:
+    name: Build Standalone Android APK
+    runs-on: ubuntu-latest
+    needs: [build-and-test, test-python-ai]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install Dependencies
+        run: pnpm install --ignore-scripts
+
+      - name: Generate Native Android Code
+        run: |
+          cd artifacts/mobile
+          npx expo prebuild --platform android
+
+      - name: Build Standalone Release APK
+        run: |
+          cd artifacts/mobile/android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK Artifact for Teammates
+        uses: actions/upload-artifact@v4
+        with:
+          name: MediTech-Android-Release-APK
+          path: artifacts/mobile/android/app/build/outputs/apk/release/*.apk

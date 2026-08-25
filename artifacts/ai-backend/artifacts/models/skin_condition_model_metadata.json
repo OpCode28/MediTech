@@ -1,0 +1,49 @@
+{
+  "model_name": "random_forest skin condition classifier",
+  "feature_version": "v3_histogram_hog_lbp_contour",
+  "dataset": {
+    "name": "Local labeled skin-condition dataset",
+    "source": "User-provided local dataset",
+    "path": "C:\\Users\\OM\\Desktop\\Emergency-Response-Hub-2\\Emergency-Response-Hub-2\\artifacts\\ai-backend\\artifacts\\datasets\\skin_conditions",
+    "classes": [
+      "acne",
+      "actinic_keratosis",
+      "atopic_dermatitis",
+      "basal_cell_carcinoma",
+      "benign_keratosis_like_lesions",
+      "eczema",
+      "fungal_infection",
+      "melanocytic_nevi",
+      "melanoma",
+      "psoriasis_lichen_planus",
+      "rosacea",
+      "seborrheic_keratoses",
+      "viral_warts_molluscum"
+    ],
+    "image_count": 28218,
+    "class_counts": {
+      "acne": 213,
+      "actinic_keratosis": 213,
+      "basal_cell_carcinoma": 3536,
+      "eczema": 1890,
+      "rosacea": 213,
+      "atopic_dermatitis": 1257,
+      "benign_keratosis_like_lesions": 2079,
+      "fungal_infection": 1702,
+      "melanocytic_nevi": 7970,
+      "melanoma": 3140,
+      "psoriasis_lichen_planus": 2055,
+      "seborrheic_keratoses": 1847,
+      "viral_warts_molluscum": 2103
+    },
+    "split_strategy": "hybrid_dataset"
+  },
+  "metrics": {
+    "accuracy": 0.6695,
+    "macro_avg_f1": 0.4937
+  },
+  "artifacts": {
+    "report_json": "C:\\Users\\OM\\Desktop\\Emergency-Response-Hub-2\\Emergency-Response-Hub-2\\artifacts\\ai-backend\\artifacts\\models\\skin_condition_model_report.json",
+    "confusion_matrix_csv": "C:\\Users\\OM\\Desktop\\Emergency-Response-Hub-2\\Emergency-Response-Hub-2\\artifacts\\ai-backend\\artifacts\\models\\skin_condition_confusion_matrix.csv"
+  }
+}

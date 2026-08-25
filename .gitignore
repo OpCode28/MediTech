@@ -47,3 +47,23 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Python & Notebooks
+__pycache__/
+*.pyc
+*.pkl
+*.h5
+*.pt
+*.bin
+.ipynb_checkpoints/
+
+# Mobile & Android
+artifacts/mobile/android/.gradle/
+artifacts/mobile/android/app/build/
+artifacts/mobile/android/local.properties
+*.apk
+
+# Environment & Secrets
+.env
+.env.local
+

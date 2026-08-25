@@ -12,33 +12,27 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB upload limit
+CORS(app, origins="*")
 
 DISCLAIMER = "This system provides preliminary guidance and is not a medical diagnosis. Always consult a qualified healthcare professional for medical advice."
 
 # ---------------------------------------------------------------------------
 # Lazy-loaded symptom model
 # ---------------------------------------------------------------------------
-_symptom_model = None
-_symptom_label_encoder = None
+_symptom_model_bundle = None
 
 def get_symptom_model():
-    global _symptom_model, _symptom_label_encoder
-    if _symptom_model is None:
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.preprocessing import LabelEncoder
-        from ml.symptom_data import generate_training_data, SYMPTOMS, DISEASES
+    global _symptom_model_bundle
+    if _symptom_model_bundle is None:
+        from ml.symptom_model import get_symptom_model_bundle
 
-        logger.info("Training symptom prediction model...")
-        X, y = generate_training_data(samples_per_disease=50)
-        le = LabelEncoder()
-        y_enc = le.fit_transform(y)
-        clf = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
-        clf.fit(X, y_enc)
-        _symptom_model = clf
-        _symptom_label_encoder = le
-        logger.info("Symptom model trained successfully.")
-    return _symptom_model, _symptom_label_encoder
+        _symptom_model_bundle = get_symptom_model_bundle()
+        logger.info(
+            "Loaded symptom prediction model",
+            extra={"model_source": _symptom_model_bundle["model_source"]},
+        )
+    return _symptom_model_bundle
 
 
 # ---------------------------------------------------------------------------
@@ -61,16 +55,17 @@ def predict():
         if not symptoms_input or not isinstance(symptoms_input, list):
             return jsonify({"error": "Please provide a list of symptoms"}), 400
 
-        from ml.symptom_data import SYMPTOMS as ALL_SYMPTOMS
+        model_bundle = get_symptom_model()
+        clf = model_bundle["model"]
+        le = model_bundle["label_encoder"]
+        all_symptoms = model_bundle["symptoms"]
 
         symptoms_input_lower = [s.lower().replace(" ", "_") for s in symptoms_input]
 
-        feature_vector = [1 if s in symptoms_input_lower else 0 for s in ALL_SYMPTOMS]
+        feature_vector = [1 if s in symptoms_input_lower else 0 for s in all_symptoms]
 
         if sum(feature_vector) == 0:
             return jsonify({"error": "No recognized symptoms found. Please check symptom names."}), 400
-
-        clf, le = get_symptom_model()
 
         proba = clf.predict_proba([feature_vector])[0]
         top3_idx = proba.argsort()[-3:][::-1]
@@ -92,7 +87,11 @@ def predict():
             "top_predictions": top_predictions,
             "recommended_specialist": specialist,
             "disclaimer": DISCLAIMER,
-            "symptoms_analyzed": [ALL_SYMPTOMS[i] for i, v in enumerate(feature_vector) if v == 1],
+            "symptoms_analyzed": [all_symptoms[i] for i, v in enumerate(feature_vector) if v == 1],
+            "model_source": model_bundle["model_source"],
+            "dataset": model_bundle.get("metadata", {}).get("dataset"),
+            "model_notes": model_bundle.get("metadata", {}).get("notes"),
+            "metrics": model_bundle.get("metadata", {}).get("metrics"),
         })
 
     except Exception as e:
@@ -129,6 +128,8 @@ def image_detect():
             "probabilities": result["probabilities"],
             "recommended_specialist": specialist,
             "disclaimer": DISCLAIMER,
+            "model_source": result.get("model_source"),
+            "dataset": result.get("dataset"),
         })
 
     except Exception as e:
@@ -319,6 +320,24 @@ def specialist_recommendation():
 def list_symptoms():
     from ml.symptom_data import SYMPTOMS, DISEASES
     return jsonify({"symptoms": SYMPTOMS, "diseases": DISEASES})
+
+
+@app.route("/ai-api/model-info", methods=["GET"])
+def model_info():
+    symptom_bundle = get_symptom_model()
+    from ml.dataset_metadata import load_dataset_info
+
+    return jsonify({
+        "symptom_prediction": {
+            "model_source": symptom_bundle["model_source"],
+            "dataset": symptom_bundle.get("metadata", {}).get("dataset"),
+            "metrics": symptom_bundle.get("metadata", {}).get("metrics"),
+            "notes": symptom_bundle.get("metadata", {}).get("notes"),
+        },
+        "skin_detection": {
+            "dataset": load_dataset_info(),
+        },
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -558,6 +577,82 @@ def assistant():
         return jsonify({"error": str(e)}), 500
 
 
+# ---------------------------------------------------------------------------
+# 9. Text-to-Speech (TTS) Audio Stream (Odia, Hindi, Indian English)
+# ---------------------------------------------------------------------------
+@app.route("/ai-api/tts", methods=["GET", "POST"])
+def tts_stream():
+    try:
+        if request.method == "POST":
+            data = request.get_json(silent=True) or {}
+            text = data.get("text", "").strip()
+            lang = data.get("language", "en").strip()
+        else:
+            text = request.args.get("text", "").strip()
+            lang = request.args.get("language", "en").strip()
+
+        if not text:
+            return jsonify({"error": "No text provided"}), 400
+
+        # Clean text from emojis & bullet formatting
+        import re
+        clean_text = re.sub(r"[⚠️🚨🤖—•]", "", text)
+        clean_text = re.sub(r"\n+", ". ", clean_text).strip()
+
+        if not clean_text:
+            return jsonify({"error": "Empty text after cleaning"}), 400
+
+        tts_lang = "en"
+        tld = "co.in"
+
+        def od2dev(txt):
+            return "".join(chr(ord(c) - 0x0200) if 0x0B01 <= ord(c) <= 0x0B71 else c for c in txt)
+
+        speak_text = clean_text[:500]
+
+        if lang in ("od", "or", "ori"):
+            speak_text = od2dev(speak_text)
+            tts_lang = "hi"
+            tld = "co.in"
+        elif lang in ("hi", "hin"):
+            tts_lang = "hi"
+            tld = "co.in"
+        else:
+            tts_lang = "en"
+            tld = "co.in"
+
+        import io
+        import urllib.parse
+        import urllib.request
+        from flask import send_file
+
+        encoded_text = urllib.parse.quote(speak_text)
+        google_co_in_url = f"https://translate.google.co.in/translate_tts?ie=UTF-8&q={encoded_text}&tl={tts_lang}&client=tw-ob"
+
+        req = urllib.request.Request(
+            google_co_in_url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=6) as response:
+                audio_data = response.read()
+                mp3_fp = io.BytesIO(audio_data)
+                return send_file(mp3_fp, mimetype="audio/mpeg", as_attachment=False, download_name="speech.mp3")
+        except Exception:
+            from gtts import gTTS
+            mp3_fp = io.BytesIO()
+            tts_obj = gTTS(text=speak_text, lang=tts_lang, tld=tld)
+            tts_obj.write_to_fp(mp3_fp)
+            mp3_fp.seek(0)
+            return send_file(mp3_fp, mimetype="audio/mpeg", as_attachment=False, download_name="speech.mp3")
+
+    except Exception as e:
+        logger.error(f"TTS Stream Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+

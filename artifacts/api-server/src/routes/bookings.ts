@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
+import { db, isDbAvailable, MOCK_BOOKINGS, MOCK_AMBULANCES, Booking } from "@workspace/db";
 import { bookingsTable, ambulancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -12,6 +12,9 @@ import {
 const router = Router();
 
 router.get("/bookings", async (_req, res) => {
+  if (!isDbAvailable) {
+    return res.json(MOCK_BOOKINGS);
+  }
   const bookings = await db.select().from(bookingsTable).orderBy(bookingsTable.createdAt);
   return res.json(bookings);
 });
@@ -23,6 +26,28 @@ router.post("/bookings", async (req, res) => {
   }
 
   const { destinationHospitalId, emergency, notes, patientName, patientPhone, pickupAddress } = parseResult.data;
+
+  if (!isDbAvailable) {
+    const availAmbulance = MOCK_AMBULANCES.find(a => a.status === "available");
+    if (availAmbulance) {
+      availAmbulance.status = "dispatched";
+    }
+    const newBooking: Booking = {
+      id: Math.floor(Math.random() * 900) + 100,
+      patientName,
+      patientPhone,
+      pickupAddress,
+      destinationHospitalId,
+      ambulanceId: availAmbulance ? availAmbulance.id : null,
+      status: availAmbulance ? "confirmed" : "pending",
+      emergency: emergency as "critical" | "moderate" | "low",
+      notes: notes ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    MOCK_BOOKINGS.unshift(newBooking);
+    return res.status(201).json(newBooking);
+  }
 
   // Find an available ambulance
   const availableAmbulances = await db
@@ -64,6 +89,14 @@ router.get("/bookings/:id", async (req, res) => {
     return res.status(400).json({ error: "Invalid ID" });
   }
 
+  if (!isDbAvailable) {
+    const booking = MOCK_BOOKINGS.find(b => b.id === parseResult.data.id);
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    return res.json(booking);
+  }
+
   const booking = await db
     .select()
     .from(bookingsTable)
@@ -83,6 +116,20 @@ router.put("/bookings/:id/status", async (req, res) => {
 
   if (!paramsResult.success || !bodyResult.success) {
     return res.status(400).json({ error: "Invalid request" });
+  }
+
+  if (!isDbAvailable) {
+    const booking = MOCK_BOOKINGS.find(b => b.id === paramsResult.data.id);
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    booking.status = bodyResult.data.status as any;
+    booking.updatedAt = new Date();
+    if (booking.ambulanceId && (booking.status === "completed" || booking.status === "cancelled")) {
+      const amb = MOCK_AMBULANCES.find(a => a.id === booking.ambulanceId);
+      if (amb) amb.status = "available";
+    }
+    return res.json(booking);
   }
 
   const updated = await db

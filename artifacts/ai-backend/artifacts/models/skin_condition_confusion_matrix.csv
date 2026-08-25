@@ -1,0 +1,14 @@
+actual/predicted,acne,actinic_keratosis,atopic_dermatitis,basal_cell_carcinoma,benign_keratosis_like_lesions,eczema,fungal_infection,melanocytic_nevi,melanoma,psoriasis_lichen_planus,rosacea,seborrheic_keratoses,viral_warts_molluscum
+acne,5,0,4,0,0,3,11,1,0,6,0,5,2
+actinic_keratosis,0,0,0,0,0,1,2,0,0,13,0,20,1
+atopic_dermatitis,0,0,43,5,2,50,17,19,5,33,0,22,55
+basal_cell_carcinoma,0,0,0,546,40,0,5,71,3,8,0,24,5
+benign_keratosis_like_lesions,0,0,0,146,154,2,0,104,1,2,0,6,1
+eczema,0,0,9,3,0,209,20,13,0,57,0,23,38
+fungal_infection,1,0,1,2,1,49,143,11,2,41,0,53,36
+melanocytic_nevi,0,0,1,19,17,0,1,1524,13,2,0,11,6
+melanoma,0,0,0,3,1,2,3,90,516,5,0,6,2
+psoriasis_lichen_planus,1,0,15,0,2,65,21,15,1,167,1,80,43
+rosacea,1,0,0,0,0,0,7,0,0,8,16,4,1
+seborrheic_keratoses,0,0,3,2,1,13,33,21,3,42,1,231,20
+viral_warts_molluscum,0,0,11,0,2,34,28,36,7,31,1,65,206

@@ -8,9 +8,10 @@ import {
   Bot, X, Mic, MicOff, Volume2, VolumeX, Globe, Send,
   Activity, Camera, FileSearch, Stethoscope, Ambulance, ChevronRight,
 } from "lucide-react";
-import { speakText as speakWithVoice, getRecognitionLang } from "@/lib/voice";
+import { useI18n } from "@/lib/i18n";
+import { speakText as speakWithVoice, stopSpeaking, getRecognitionLang, type Lang } from "@/lib/voice";
 
-type Language = "en" | "hi" | "od";
+type Language = Lang;
 
 interface Message {
   id: string;
@@ -88,8 +89,8 @@ function speakText(text: string, lang: Language, rate = 0.9) {
 }
 
 export function GlobalAssistant() {
+  const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState<Language>(() => (localStorage.getItem("meditech-lang") as Language) ?? "en");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -110,8 +111,16 @@ export function GlobalAssistant() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const sendMessage = useCallback(async (text: string, isGreeting = false) => {
+  const handleLangSwitch = (newLang: Language) => {
+    if (newLang === lang) return;
+    stopSpeaking();
+    setLang(newLang);
+    sendMessage("hello", true, newLang);
+  };
+
+  const sendMessage = useCallback(async (text: string, isGreeting = false, targetLang?: Language) => {
     if (!text.trim()) return;
+    const currentLang = targetLang || lang;
     if (!isGreeting) {
       setMessages((prev) => [...prev, {
         id: crypto.randomUUID(), role: "user", text: text.trim(),
@@ -123,7 +132,7 @@ export function GlobalAssistant() {
       const res = await fetch("/ai-api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, language: lang }),
+        body: JSON.stringify({ message: text, language: currentLang }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error");
@@ -138,16 +147,16 @@ export function GlobalAssistant() {
         urgency: data.urgency,
       };
       setMessages((prev) => isGreeting ? [botMsg] : [...prev, botMsg]);
-      if (voiceOn) speakText(data.response, lang);
+      if (voiceOn) speakText(data.response, currentLang);
     } catch {
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          text: lang === "hi"
+          text: currentLang === "hi"
             ? "माफ़ करें, कनेक्शन में समस्या है। कृपया पुनः प्रयास करें।"
-            : lang === "od"
+            : currentLang === "od"
             ? "ଦୁଃଖିତ, ସଂଯୋଗ ସମସ୍ୟା। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।"
             : "Sorry, I couldn't connect. Please try again.",
         },
@@ -206,10 +215,7 @@ export function GlobalAssistant() {
   };
 
   const handleLangChange = (l: Language) => {
-    setLang(l);
-    localStorage.setItem("meditech-lang", l);
-    setMessages([]);
-    setTimeout(() => sendMessage("hello", true), 100);
+    handleLangSwitch(l);
   };
 
   return (
