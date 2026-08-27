@@ -33,10 +33,10 @@ export default function TripNavigation() {
   const [suitableHospitals, setSuitableHospitals] = useState<any[]>([]);
   const [selectingHospital, setSelectingHospital] = useState(false);
 
-  // Default Rourkela, Odisha Coordinates
+  // Exact Rourkela, Odisha Coordinates
   const [ambPos, setAmbPos] = useState<[number, number]>([22.2380, 84.8450]);
   const [pickupPos, setPickupPos] = useState<[number, number]>([22.2420, 84.8520]);
-  const [hospitalPos, setHospitalPos] = useState<[number, number]>([22.2562, 84.8569]);
+  const [hospitalPos, setHospitalPos] = useState<[number, number]>([22.2612, 84.8647]);
 
   // Road Routing Metadata (Calculated via OSRM Road Routing API)
   const [routeMeta, setRouteMeta] = useState<{ distanceKm: number; durationMin: number; coords: [number, number][] }>({
@@ -117,7 +117,7 @@ export default function TripNavigation() {
     }
 
     if (!isHospPhase) {
-      // Phase 1: Ambulance -> Patient Pickup
+      // Phase 1: Ambulance -> Patient Pickup (STRICT SINGLE ROUTE)
       if (hospitalMarker.current) {
         map.removeLayer(hospitalMarker.current);
         hospitalMarker.current = null;
@@ -140,7 +140,7 @@ export default function TripNavigation() {
 
       drawRoadRoute(map, amb, pickupPos);
     } else {
-      // Phase 2: Ambulance -> Hospital
+      // Phase 2: Ambulance -> Hospital (STRICT SINGLE ROUTE)
       if (pickupMarker.current) {
         map.removeLayer(pickupMarker.current);
         pickupMarker.current = null;
@@ -352,8 +352,8 @@ export default function TripNavigation() {
 
       const targetHosp = suitableHospitals.find((item) => item.hospital.id === hospitalId)?.hospital || {
         name: "Ispat General Hospital (IGH)",
-        latitude: 22.2562,
-        longitude: 84.8569,
+        latitude: 22.2612,
+        longitude: 84.8647,
       };
 
       const newHospPos: [number, number] = [targetHosp.latitude, targetHosp.longitude];
