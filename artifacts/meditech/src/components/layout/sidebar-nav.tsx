@@ -88,6 +88,38 @@ export function SidebarNav() {
           {item.label}
         </Link>
       ))}
+
+      <div className="pt-3 pb-1">
+        <div className="flex items-center gap-2 px-3 mb-1">
+          <span className="text-xs font-semibold text-cyan-700 uppercase tracking-wider">Driver Sector 🚑</span>
+          <Badge className="text-[10px] py-0 px-1.5 h-4 bg-cyan-700">Sector 2</Badge>
+        </div>
+      </div>
+
+      <Link
+        href="/driver/dashboard"
+        className={cn(
+          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          isActive("/driver/dashboard")
+            ? "bg-cyan-700 text-white"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        <Ambulance className="h-4 w-4 text-cyan-600" />
+        Driver Dashboard
+      </Link>
+      <Link
+        href="/driver/register"
+        className={cn(
+          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          isActive("/driver/register")
+            ? "bg-cyan-700 text-white"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        <UserCheck className="h-4 w-4 text-cyan-600" />
+        Driver Onboarding
+      </Link>
     </nav>
   );
 }

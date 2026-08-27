@@ -6,6 +6,8 @@ import ambulancesRouter from "./ambulances";
 import bookingsRouter from "./bookings";
 import analyticsRouter from "./analytics";
 import dashboardRouter from "./dashboard";
+import driversRouter from "./drivers";
+import tripsRouter from "./trips";
 
 const router: IRouter = Router();
 
@@ -16,5 +18,7 @@ router.use(ambulancesRouter);
 router.use(bookingsRouter);
 router.use(analyticsRouter);
 router.use(dashboardRouter);
+router.use(driversRouter);
+router.use(tripsRouter);
 
 export default router;

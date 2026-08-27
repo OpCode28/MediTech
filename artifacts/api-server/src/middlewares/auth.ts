@@ -3,8 +3,9 @@ import { Request, Response, NextFunction } from "express";
 export interface UserPayload {
   id: string;
   name: string;
-  role: "admin" | "hospital_staff" | "patient";
+  role: "admin" | "hospital_staff" | "patient" | "ambulance_driver";
   hospitalId?: number;
+  driverId?: number;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -29,8 +30,16 @@ export function authenticateToken(
     return next();
   }
 
-  // Parse simple dev token (e.g. bearer: "staff-hospital-1" or "admin-system")
-  if (token.startsWith("staff")) {
+  // Parse simple dev token (e.g. bearer: "staff-hospital-1", "driver-1", or "admin-system")
+  if (token.startsWith("driver-")) {
+    const driverId = Number(token.split("-")[1]) || 1;
+    req.user = {
+      id: `driver-${driverId}`,
+      name: `Driver #${driverId}`,
+      role: "ambulance_driver",
+      driverId,
+    };
+  } else if (token.startsWith("staff")) {
     const parts = token.split("-");
     const hospitalId = parts[2] ? Number(parts[2]) : 1;
     req.user = {

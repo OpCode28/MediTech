@@ -262,6 +262,26 @@ export const translations = {
       recommended: "Recommended Specialist",
       disclaimer: "Specialist recommendations are suggestive. Please consult your primary care doctor.",
     },
+    // Driver Sector
+    driver: {
+      sectorTitle: "Ambulance Driver Sector",
+      portal: "Driver Portal",
+      availabilityAvailable: "AVAILABLE",
+      availabilityOffline: "OFFLINE",
+      emergencyAlert: "EMERGENCY ALERT",
+      accept: "ACCEPT EMERGENCY",
+      decline: "DECLINE",
+      navToPatient: "NAVIGATE TO PATIENT",
+      arrivedPatient: "ARRIVED AT PATIENT",
+      patientPickedUp: "PATIENT PICKED UP",
+      selectHospital: "SELECT SUITABLE HOSPITAL",
+      navToHospital: "NAVIGATE TO HOSPITAL",
+      arrivedHospital: "ARRIVED AT HOSPITAL",
+      completeTrip: "COMPLETE TRIP",
+      liveGPS: "GPS: ACTIVE",
+      gpsLost: "GPS SIGNAL LOST",
+      suitableHospitals: "Nearby Suitable Hospitals (Ranked by ICU & ETA)",
+    },
     // Chatbot
     chatbot: {
       title: "Health Assistant",

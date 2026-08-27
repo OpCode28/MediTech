@@ -4,11 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { Ambulance, Clock, MapPin, Phone, Building2 } from "lucide-react";
+import { Ambulance, Clock, MapPin, Phone, Building2, Navigation, Activity, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useI18n } from "@/lib/i18n";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, string> = {
@@ -53,6 +56,15 @@ export default function Bookings() {
   const { t } = useI18n();
   const b = t.bookings;
 
+  // Live Patient Tracking State
+  const [trackingBookingId, setTrackingBookingId] = useState<number | null>(null);
+  const [liveLocation, setLiveLocation] = useState<any>(null);
+  const [lastUpdatedSecs, setLastUpdatedSecs] = useState(0);
+
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMap = useRef<L.Map | null>(null);
+  const ambMarker = useRef<L.Marker | null>(null);
+
   const { data: bookings, isLoading } = useListBookings({ query: { queryKey: getListBookingsQueryKey() } });
   const { data: hospitals } = useListHospitals({}, { query: { queryKey: getListHospitalsQueryKey({}) } });
 
@@ -69,6 +81,76 @@ export default function Bookings() {
   });
 
   const filteredBookings = bookings?.filter(bk => filterStatus === "all" || bk.status === filterStatus) ?? [];
+
+  // Initialize Map when modal opens
+  useEffect(() => {
+    if (!trackingBookingId || !mapRef.current) return;
+
+    if (!leafletMap.current) {
+      const map = L.map(mapRef.current, {
+        center: [20.3533, 85.8189],
+        zoom: 14,
+        zoomControl: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(map);
+
+      const ambIcon = L.divIcon({
+        html: `<div style="background:#0e7490; color:white; padding:6px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5); text-align:center;">🚑</div>`,
+        className: "",
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+
+      ambMarker.current = L.marker([20.345, 85.812], { icon: ambIcon }).addTo(map).bindPopup("Ambulance Position");
+      leafletMap.current = map;
+    }
+
+    // Fetch initial location
+    fetch(`/api/trips/${trackingBookingId}/location`)
+      .then((res) => res.json())
+      .then((data) => {
+        setLiveLocation(data);
+        if (data.latitude && data.longitude && ambMarker.current) {
+          ambMarker.current.setLatLng([data.latitude, data.longitude]);
+          leafletMap.current?.panTo([data.latitude, data.longitude]);
+        }
+      })
+      .catch(() => {});
+
+    // Listen to real-time SSE stream
+    const eventSource = new EventSource(`/api/trips/${trackingBookingId}/stream`);
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.latitude && payload.longitude) {
+          setLiveLocation(payload);
+          setLastUpdatedSecs(0);
+          if (ambMarker.current) {
+            ambMarker.current.setLatLng([payload.latitude, payload.longitude]);
+            leafletMap.current?.panTo([payload.latitude, payload.longitude]);
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing SSE payload", e);
+      }
+    };
+
+    const interval = setInterval(() => {
+      setLastUpdatedSecs((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      eventSource.close();
+      clearInterval(interval);
+      if (leafletMap.current) {
+        leafletMap.current.remove();
+        leafletMap.current = null;
+      }
+    };
+  }, [trackingBookingId]);
 
   return (
     <div className="space-y-6">
@@ -108,6 +190,8 @@ export default function Bookings() {
           {[...filteredBookings].reverse().map(booking => {
             const hospital = hospitals?.find(h => h.id === booking.destinationHospitalId);
             const nextStatuses = STATUS_TRANSITIONS[booking.status] ?? [];
+            const canTrack = booking.status === "confirmed" || booking.status === "dispatched";
+
             return (
               <Card key={booking.id} className="hover:shadow-md transition-shadow" data-testid={`card-booking-${booking.id}`}>
                 <CardContent className="pt-4 pb-4">
@@ -143,23 +227,32 @@ export default function Bookings() {
                         </div>
                       </div>
                     </div>
-                    {nextStatuses.length > 0 && (
-                      <div className="flex gap-2 shrink-0 flex-wrap">
-                        {nextStatuses.map(nextStatus => (
-                          <Button
-                            key={nextStatus}
-                            size="sm"
-                            variant={nextStatus === "cancelled" ? "destructive" : "default"}
-                            onClick={() => updateStatus.mutate({ id: booking.id, data: { status: nextStatus as any } })}
-                            disabled={updateStatus.isPending}
-                            className="capitalize"
-                            data-testid={`button-status-${nextStatus}-${booking.id}`}
-                          >
-                            {nextStatus === "cancelled" ? b.cancel : `${b.updateStatus}: ${nextStatus}`}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
+
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      {canTrack && (
+                        <Button
+                          size="sm"
+                          className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold"
+                          onClick={() => setTrackingBookingId(booking.id)}
+                        >
+                          <Navigation className="h-4 w-4 mr-1 animate-pulse" /> TRACK LIVE AMBULANCE
+                        </Button>
+                      )}
+
+                      {nextStatuses.map(nextStatus => (
+                        <Button
+                          key={nextStatus}
+                          size="sm"
+                          variant={nextStatus === "cancelled" ? "destructive" : "outline"}
+                          onClick={() => updateStatus.mutate({ id: booking.id, data: { status: nextStatus as any } })}
+                          disabled={updateStatus.isPending}
+                          className="capitalize"
+                          data-testid={`button-status-${nextStatus}-${booking.id}`}
+                        >
+                          {nextStatus === "cancelled" ? b.cancel : `${b.updateStatus}: ${nextStatus}`}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                   {booking.notes && (
                     <div className="mt-3 ml-11 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
@@ -172,6 +265,49 @@ export default function Bookings() {
           })}
         </div>
       )}
+
+      {/* Patient Live Ambulance Tracking Modal */}
+      <Dialog open={trackingBookingId !== null} onOpenChange={(open) => !open && setTrackingBookingId(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-cyan-900 text-lg">
+              <Ambulance className="h-5 w-5 text-cyan-600 animate-pulse" /> Live Ambulance GPS Tracking
+            </DialogTitle>
+            <DialogDescription className="flex items-center justify-between text-xs">
+              <span>Real-time location stream connected to dispatch vehicle</span>
+              <span className="font-semibold text-emerald-600 flex items-center gap-1">
+                <Activity className="h-3 w-3" /> Updated {lastUpdatedSecs}s ago
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="h-64 w-full rounded-lg border-2 border-slate-300 overflow-hidden" ref={mapRef} />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-cyan-50 border border-cyan-200 p-3 rounded-lg text-center">
+                <p className="text-[11px] text-cyan-800 font-semibold uppercase">ESTIMATED ARRIVAL (ETA)</p>
+                <p className="text-xl font-bold text-cyan-950">{liveLocation?.etaMinutes || 8} mins</p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-lg text-center">
+                <p className="text-[11px] text-emerald-800 font-semibold uppercase">ROAD DISTANCE</p>
+                <p className="text-xl font-bold text-emerald-950">{liveLocation?.roadDistanceKm || 3.2} km</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 text-white p-3 rounded-lg text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-semibold">ASSIGNED AMBULANCE</span>
+                <span className="font-bold text-cyan-400">OD-02-AM-1081 (ICU Cardiac)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-semibold">DRIVER NAME</span>
+                <span className="font-bold">Ramesh Kumar (+91 98765 43210)</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

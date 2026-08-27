@@ -3,19 +3,26 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { hospitalsTable } from "./hospitals";
 
-export const ambulanceStatusEnum = pgEnum("ambulance_status", ["available", "dispatched", "maintenance"]);
-export const ambulanceTypeEnum = pgEnum("ambulance_type", ["basic", "advanced", "icu"]);
+export const ambulanceStatusEnum = pgEnum("ambulance_status", ["available", "dispatched", "maintenance", "offline"]);
+export const ambulanceTypeEnum = pgEnum("ambulance_type", ["basic", "advanced", "icu", "emergency", "patient_transport"]);
 
 export const ambulancesTable = pgTable("ambulances", {
   id: serial("id").primaryKey(),
-  hospitalId: integer("hospital_id").notNull().references(() => hospitalsTable.id, { onDelete: "cascade" }),
-  vehicleNumber: text("vehicle_number").notNull(),
+  hospitalId: integer("hospital_id").references(() => hospitalsTable.id, { onDelete: "cascade" }),
+  vehicleNumber: text("vehicle_number").notNull().unique(),
   driverName: text("driver_name").notNull(),
   driverPhone: text("driver_phone").notNull(),
   status: ambulanceStatusEnum("status").notNull().default("available"),
   type: ambulanceTypeEnum("type").notNull().default("basic"),
-  latitude: real("latitude").notNull(),
-  longitude: real("longitude").notNull(),
+  vehicleMake: text("vehicle_make"),
+  vehicleModel: text("vehicle_model"),
+  vehicleYear: text("vehicle_year"),
+  patientCapacity: integer("patient_capacity").default(1),
+  insuranceNumber: text("insurance_number"),
+  insuranceExpiry: text("insurance_expiry"),
+  fitnessCertificate: text("fitness_certificate"),
+  latitude: real("latitude").notNull().default(20.2961),
+  longitude: real("longitude").notNull().default(85.8245),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

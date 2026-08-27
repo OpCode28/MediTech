@@ -22,6 +22,10 @@ import HomeCare from "@/pages/home-care";
 import PrescriptionScanner from "@/pages/prescription-scanner";
 import Specialist from "@/pages/specialist";
 import AIChatbot from "@/pages/ai-chatbot";
+import DriverLogin from "@/pages/driver/login";
+import DriverRegister from "@/pages/driver/register";
+import DriverDashboard from "@/pages/driver/dashboard";
+import TripNavigation from "@/pages/driver/trip-navigation";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +48,10 @@ function Router() {
       <Route path="/ai/prescription-scanner" component={PrescriptionScanner} />
       <Route path="/ai/specialist" component={Specialist} />
       <Route path="/ai/chatbot" component={AIChatbot} />
+      <Route path="/driver/login" component={DriverLogin} />
+      <Route path="/driver/register" component={DriverRegister} />
+      <Route path="/driver/dashboard" component={DriverDashboard} />
+      <Route path="/driver/trip/:id" component={TripNavigation} />
       <Route component={NotFound} />
     </Switch>
   );

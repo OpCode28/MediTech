@@ -266,7 +266,116 @@ export const MOCK_TRENDS: AnalyticsTrend[] = [
   { id: 4, month: "Apr", emergencyCalls: 450, ambulancesDispatched: 430, avgResponseTime: 7.9, criticalCases: 118 },
 ];
 
+export interface DriverMock {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  emergencyContact: string;
+  address: string;
+  licenseNumber: string;
+  licenseExpiry: string;
+  driverRegistrationId: string;
+  verificationStatus: "pending" | "verified" | "rejected" | "suspended";
+  availabilityStatus: "offline" | "available" | "busy" | "on_trip";
+  ambulanceId: number | null;
+}
+
+export interface TripMock {
+  id: number;
+  bookingId: number;
+  driverId: number;
+  ambulanceId: number;
+  hospitalId: number | null;
+  status:
+    | "requested"
+    | "offered"
+    | "accepted"
+    | "en_route_to_patient"
+    | "arrived_at_pickup"
+    | "patient_picked_up"
+    | "en_route_to_hospital"
+    | "arrived_at_hospital"
+    | "completed"
+    | "declined"
+    | "cancelled";
+  pickupLatitude: number;
+  pickupLongitude: number;
+  hospitalLatitude: number | null;
+  hospitalLongitude: number | null;
+  currentLatitude: number;
+  currentLongitude: number;
+  speed: number;
+  heading: number;
+  accuracy: number;
+  etaMinutes: number;
+  roadDistanceKm: number;
+  acceptedAt?: Date;
+  pickedUpAt?: Date;
+  arrivedHospitalAt?: Date;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const MOCK_DRIVERS: DriverMock[] = [
+  {
+    id: 1,
+    fullName: "Ramesh Kumar",
+    email: "ramesh.driver@meditech.in",
+    phone: "+91 98765 43210",
+    emergencyContact: "+91 98765 00001",
+    address: "Ansari Nagar, New Delhi",
+    licenseNumber: "DL-0120201122334",
+    licenseExpiry: "2030-12-31",
+    driverRegistrationId: "DRV-DL-1001",
+    verificationStatus: "verified",
+    availabilityStatus: "available",
+    ambulanceId: 1,
+  },
+  {
+    id: 2,
+    fullName: "Pradeep Swain",
+    email: "pradeep.swain@meditech.in",
+    phone: "+91 98765 43214",
+    emergencyContact: "+91 98765 00002",
+    address: "Patia, Bhubaneswar, Odisha",
+    licenseNumber: "OD-0220199988776",
+    licenseExpiry: "2029-08-15",
+    driverRegistrationId: "DRV-OD-2002",
+    verificationStatus: "verified",
+    availabilityStatus: "available",
+    ambulanceId: 5,
+  },
+];
+
+export const MOCK_TRIPS: TripMock[] = [
+  {
+    id: 501,
+    bookingId: 102,
+    driverId: 2,
+    ambulanceId: 5,
+    hospitalId: 3,
+    status: "accepted",
+    pickupLatitude: 20.3533,
+    pickupLongitude: 85.8189,
+    hospitalLatitude: 20.3533,
+    hospitalLongitude: 85.8189,
+    currentLatitude: 20.345,
+    currentLongitude: 85.812,
+    speed: 35,
+    heading: 120,
+    accuracy: 8,
+    etaMinutes: 12,
+    roadDistanceKm: 4.5,
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
 export const MOCK_ALERTS: Alert[] = [
   { id: 1, title: "ICU Bed Shortage Notice", message: "SCB Cuttack ICU occupancy exceeds 90%. Divert non-critical cases.", severity: "critical", hospitalId: 2, isActive: 1, createdAt: new Date() },
   { id: 2, title: "Ambulance Fleet Active", message: "5 new Advanced Life Support ambulances deployed in Bhubaneswar.", severity: "info", hospitalId: 3, isActive: 1, createdAt: new Date() },
 ];
+
