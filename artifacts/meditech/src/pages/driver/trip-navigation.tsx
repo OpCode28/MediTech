@@ -35,7 +35,7 @@ export default function TripNavigation() {
 
   // Exact Rourkela, Odisha Coordinates
   const [ambPos, setAmbPos] = useState<[number, number]>([22.2380, 84.8450]);
-  const [pickupPos, setPickupPos] = useState<[number, number]>([22.2420, 84.8520]);
+  const [pickupPos, setPickupPos] = useState<[number, number]>([22.2465, 84.8480]);
   const [hospitalPos, setHospitalPos] = useState<[number, number]>([22.2612, 84.8647]);
 
   // Road Routing Metadata (Calculated via OSRM Road Routing API)
@@ -146,19 +146,22 @@ export default function TripNavigation() {
         pickupMarker.current = null;
       }
 
+      const hospitalIcon = L.divIcon({
+        html: `
+          <div style="position:relative; width:44px; height:44px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:absolute; width:44px; height:44px; background:rgba(22, 163, 74, 0.35); border-radius:50%; animation:ping 2s infinite;"></div>
+            <div style="position:relative; width:34px; height:34px; background:#16a34a; color:white; border-radius:50%; border:3px solid white; box-shadow:0 4px 12px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; font-size:18px;">🏥</div>
+          </div>
+        `,
+        className: "",
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      });
+
       if (!hospitalMarker.current) {
-        const hospitalIcon = L.divIcon({
-          html: `
-            <div style="position:relative; width:44px; height:44px; display:flex; align-items:center; justify-content:center;">
-              <div style="position:absolute; width:44px; height:44px; background:rgba(22, 163, 74, 0.35); border-radius:50%; animation:ping 2s infinite;"></div>
-              <div style="position:relative; width:34px; height:34px; background:#16a34a; color:white; border-radius:50%; border:3px solid white; box-shadow:0 4px 12px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; font-size:18px;">🏥</div>
-            </div>
-          `,
-          className: "",
-          iconSize: [44, 44],
-          iconAnchor: [22, 22],
-        });
         hospitalMarker.current = L.marker(hospitalPos, { icon: hospitalIcon }).addTo(map).bindPopup("<b>Ispat General Hospital (IGH)</b><br>Sector 19, Rourkela");
+      } else {
+        hospitalMarker.current.setLatLng(hospitalPos);
       }
 
       drawRoadRoute(map, amb, hospitalPos);
