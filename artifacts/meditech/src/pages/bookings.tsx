@@ -125,13 +125,24 @@ export default function Bookings() {
       ambMarker.current = L.marker([22.2380, 84.8450], { icon: ambIcon }).addTo(map).bindPopup("<b>Ambulance OD-02-AM-1081</b><br>En route to your pickup location");
       L.marker([22.2420, 84.8520], { icon: patientIcon }).addTo(map).bindPopup("<b>Your Pickup Location (Panposh, Rourkela)</b>");
 
-      // Draw road route line
-      L.polyline([[22.2380, 84.8450], [22.2400, 84.8480], [22.2420, 84.8520]], {
-        color: "#0284c7",
-        weight: 6,
-        opacity: 0.85,
-        dashArray: "10, 10",
-      }).addTo(map);
+      // Fetch Real OSRM Road Geometry for Patient Map
+      fetch(`https://router.project-osrm.org/route/v1/driving/84.8450,22.2380;84.8520,22.2420?overview=full&geometries=geojson`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.routes && data.routes.length > 0) {
+            const coords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+            
+            // Outer Glow
+            L.polyline(coords, { color: "#0284c7", weight: 10, opacity: 0.3, lineCap: "round", lineJoin: "round" }).addTo(map);
+            // Solid Inner Line
+            L.polyline(coords, { color: "#2563eb", weight: 6, opacity: 0.95, lineCap: "round", lineJoin: "round" }).addTo(map);
+
+            map.fitBounds(L.latLngBounds(coords), { padding: [50, 50] });
+          }
+        })
+        .catch(() => {
+          L.polyline([[22.2380, 84.8450], [22.2420, 84.8520]], { color: "#2563eb", weight: 6, opacity: 0.95 }).addTo(map);
+        });
 
       leafletMap.current = map;
     }
