@@ -90,21 +90,50 @@ export default function Bookings() {
       const map = L.map(mapRef.current, {
         center: [20.3533, 85.8189],
         zoom: 14,
-        zoomControl: false,
+        zoomControl: true,
       });
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        subdomains: "abcd",
+        maxZoom: 20,
       }).addTo(map);
 
       const ambIcon = L.divIcon({
-        html: `<div style="background:#0e7490; color:white; padding:6px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5); text-align:center;">🚑</div>`,
+        html: `
+          <div style="position:relative; width:44px; height:44px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:absolute; width:44px; height:44px; background:rgba(14, 116, 144, 0.35); border-radius:50%; animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+            <div style="position:relative; width:34px; height:34px; background:#0e7490; color:white; border-radius:50%; border:3px solid white; box-shadow:0 4px 12px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; font-size:18px;">🚑</div>
+          </div>
+        `,
         className: "",
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
       });
 
-      ambMarker.current = L.marker([20.345, 85.812], { icon: ambIcon }).addTo(map).bindPopup("Ambulance Position");
+      const patientIcon = L.divIcon({
+        html: `
+          <div style="position:relative; width:44px; height:44px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:absolute; width:44px; height:44px; background:rgba(220, 38, 38, 0.35); border-radius:50%; animation:ping 2s infinite;"></div>
+            <div style="position:relative; width:34px; height:34px; background:#dc2626; color:white; border-radius:50%; border:3px solid white; box-shadow:0 4px 12px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; font-size:18px;">📍</div>
+          </div>
+        `,
+        className: "",
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      });
+
+      ambMarker.current = L.marker([20.345, 85.812], { icon: ambIcon }).addTo(map).bindPopup("<b>Ambulance OD-02-AM-1081</b><br>En route to your pickup location");
+      L.marker([20.3533, 85.8189], { icon: patientIcon }).addTo(map).bindPopup("<b>Your Pickup Location</b>");
+
+      // Draw road route line
+      L.polyline([[20.345, 85.812], [20.349, 85.815], [20.3533, 85.8189]], {
+        color: "#0284c7",
+        weight: 6,
+        opacity: 0.85,
+        dashArray: "10, 10",
+      }).addTo(map);
+
       leafletMap.current = map;
     }
 
