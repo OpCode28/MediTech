@@ -364,9 +364,9 @@ export const MOCK_AMBULANCES: Ambulance[] = [
 ];
 
 export const MOCK_BOOKINGS: Booking[] = [
-  { id: 101, patientName: "Aarav Sharma", patientPhone: "+91 98111 22233", pickupAddress: "Connaught Place, New Delhi", destinationHospitalId: 1, ambulanceId: 2, status: "dispatched", emergency: "critical", notes: "Severe chest pain", createdAt: new Date(Date.now() - 15 * 60000), updatedAt: new Date() },
-  { id: 102, patientName: "Priyanka Naik", patientPhone: "+91 98222 33344", pickupAddress: "Patia, Bhubaneswar", destinationHospitalId: 3, ambulanceId: 5, status: "confirmed", emergency: "moderate", notes: "High fever and dizziness", createdAt: new Date(Date.now() - 40 * 60000), updatedAt: new Date() },
-  { id: 103, patientName: "Soumya Ranjan", patientPhone: "+91 98333 44455", pickupAddress: "Cuttack Railway Station", destinationHospitalId: 2, ambulanceId: 4, status: "dispatched", emergency: "critical", notes: "Road accident victim", createdAt: new Date(Date.now() - 55 * 60000), updatedAt: new Date() },
+  { id: 101, patientName: "Aarav Sharma", patientPhone: "+91 98111 22233", pickupAddress: "Sector 19, Rourkela, Odisha", destinationHospitalId: 6, ambulanceId: 2, status: "dispatched", emergency: "critical", notes: "Severe chest pain", createdAt: new Date(Date.now() - 15 * 60000), updatedAt: new Date() },
+  { id: 102, patientName: "Priyanka Naik", patientPhone: "+91 98222 33344", pickupAddress: "Panposh Road, Rourkela, Odisha", destinationHospitalId: 6, ambulanceId: 5, status: "confirmed", emergency: "moderate", notes: "High fever and dizziness", createdAt: new Date(Date.now() - 40 * 60000), updatedAt: new Date() },
+  { id: 103, patientName: "Soumya Ranjan", patientPhone: "+91 98333 44455", pickupAddress: "Civil Township, Rourkela, Odisha", destinationHospitalId: 7, ambulanceId: 4, status: "dispatched", emergency: "critical", notes: "Road accident victim", createdAt: new Date(Date.now() - 55 * 60000), updatedAt: new Date() },
 ];
 
 export const MOCK_HOTSPOTS: EmergencyHotspot[] = [

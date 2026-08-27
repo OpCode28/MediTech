@@ -93,9 +93,10 @@ export default function Bookings() {
         zoomControl: true,
       });
 
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-        attribution: "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ",
-        maxZoom: 19,
+      L.tileLayer("https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        subdomains: ["mt0", "mt1", "mt2", "mt3"],
+        attribution: "&copy; Google Maps",
+        maxZoom: 20,
       }).addTo(map);
 
       const ambIcon = L.divIcon({
