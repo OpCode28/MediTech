@@ -32,12 +32,12 @@ export default function TripNavigation() {
   const [suitableHospitals, setSuitableHospitals] = useState<any[]>([]);
   const [selectingHospital, setSelectingHospital] = useState(false);
 
-  // Default coordinates (Bhubaneswar, Odisha)
-  const [ambPos, setAmbPos] = useState<[number, number]>([20.345, 85.812]);
-  const [pickupPos, setPickupPos] = useState<[number, number]>([20.3533, 85.8189]);
-  const [hospitalPos, setHospitalPos] = useState<[number, number] | null>(null);
+  // Default coordinates for Rourkela, Odisha
+  const [ambPos, setAmbPos] = useState<[number, number]>([22.2380, 84.8450]);
+  const [pickupPos, setPickupPos] = useState<[number, number]>([22.2420, 84.8520]);
+  const [hospitalPos, setHospitalPos] = useState<[number, number] | null>([22.2562, 84.8569]);
 
-  // Initialize Professional Leaflet Map with CartoDB Voyager Navigation Tiles
+  // Initialize Professional Leaflet Map with Esri World Street Map Tiles (Zero watermark, high resolution)
   useEffect(() => {
     if (!mapRef.current || leafletMap.current) return;
 
@@ -47,11 +47,10 @@ export default function TripNavigation() {
       zoomControl: true,
     });
 
-    // High-DPI CartoDB Voyager tiles for crisp Google/Uber-style navigation graphics
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
+    // High-resolution Esri World Street Map tiles (Zero API key required, 100% clean)
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ",
+      maxZoom: 19,
     }).addTo(map);
 
     // Custom Icon Generators with Pulsing Emergency Halos

@@ -88,15 +88,14 @@ export default function Bookings() {
 
     if (!leafletMap.current) {
       const map = L.map(mapRef.current, {
-        center: [20.3533, 85.8189],
+        center: [22.2420, 84.8520],
         zoom: 14,
         zoomControl: true,
       });
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+        attribution: "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ",
+        maxZoom: 19,
       }).addTo(map);
 
       const ambIcon = L.divIcon({
@@ -123,11 +122,11 @@ export default function Bookings() {
         iconAnchor: [22, 22],
       });
 
-      ambMarker.current = L.marker([20.345, 85.812], { icon: ambIcon }).addTo(map).bindPopup("<b>Ambulance OD-02-AM-1081</b><br>En route to your pickup location");
-      L.marker([20.3533, 85.8189], { icon: patientIcon }).addTo(map).bindPopup("<b>Your Pickup Location</b>");
+      ambMarker.current = L.marker([22.2380, 84.8450], { icon: ambIcon }).addTo(map).bindPopup("<b>Ambulance OD-02-AM-1081</b><br>En route to your pickup location");
+      L.marker([22.2420, 84.8520], { icon: patientIcon }).addTo(map).bindPopup("<b>Your Pickup Location (Panposh, Rourkela)</b>");
 
       // Draw road route line
-      L.polyline([[20.345, 85.812], [20.349, 85.815], [20.3533, 85.8189]], {
+      L.polyline([[22.2380, 84.8450], [22.2400, 84.8480], [22.2420, 84.8520]], {
         color: "#0284c7",
         weight: 6,
         opacity: 0.85,
